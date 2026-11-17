@@ -5,6 +5,6 @@
 
 backend/.gradle/
 backend/build/
+/.data/
 
 infra/.env
-

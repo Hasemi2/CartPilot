@@ -1,131 +1,191 @@
-# CartPilot — 기술 스택 및 도입 계획
+# CartPilot 기술 스택 및 실행 환경
 
-## 1. 프로젝트 목표
-자연어 요청으로 상품 검색·추천·장바구니 구성을 지원하는 **AI 커머스 주문 에이전트**. 가격·재고·주문·결제는 서버의 검증된 도메인 로직으로 처리한다.
+## 1. 기술 목표
 
-**MVP 흐름**: 사용자 자연어 요청 → LLM의 Tool Calling → 실제 상품 검색/재고 확인 → 장바구니 → 서버 주문 견적 → 사용자 명시적 승인 → Mock 결제 → 주문 상태 확인.
+CartPilot은 자연어 요청을 외부 LLM이 구조화된 Tool 호출로 변환하고, Java application service가 실제 상품·재고·장바구니·주문 규칙을 검증하는 AI 커머스 학습 프로젝트다.
 
-> 원칙: AI는 *의도 해석 및 도구 선택*을 맡고, 백엔드는 *권한·정합성·트랜잭션·결제*를 책임진다.
+로컬 실행은 설치가 필요 없는 H2와 Stub AI adapter를 기본으로 한다. PostgreSQL과 pgvector는 GitHub Actions의 분리된 검증 환경에서 확인한다.
 
-## 2. 핵심 기술 스택
+## 2. 핵심 스택
 
-| 영역 | 기술 | 도입 시점 | 선택 이유 |
+| 영역 | 기술 | 기본 환경 (`local-lite`) | 검증 환경 (`ci-postgres`) |
 |---|---|---|---|
-| 언어 | Java 21 | 초기 | LTS, 기존 Java/Spring 역량 활용 |
-| Backend | Spring Boot 4.1.x, Spring MVC | 초기 | 안정적인 REST API와 동기적 비즈니스 로직 |
-| Build | Gradle (Groovy DSL), Gradle Wrapper | 초기 | 재현 가능한 빌드 |
-| ORM | Spring Data JPA / Hibernate | 초기 | 주문·상품 도메인 영속성 모델링 |
-| DB | PostgreSQL | 초기 | 관계형 트랜잭션과 정합성 |
-| DB 마이그레이션 | Flyway | 도메인 도입 시 | 스키마 버전 관리 |
-| AI | Spring AI 2.0.x | Tool Calling 단계 | LLM ChatClient, Tool Calling, 평가, RAG 지원 |
-| LLM | OpenAI API (환경변수 기반) | Tool Calling 단계 | 실제 자연어 요청 및 도구 선택 검증 |
-| 벡터 검색 | pgvector + Spring AI PgVectorStore | RAG 단계 | PostgreSQL 기반 의미 검색 |
-| 캐시 | Redis | 필요 시 | 캐시, TTL, 일부 요청 중복 방어; 결제 정합성의 단독 근거로 사용하지 않음 |
-| 결제 | 자체 Mock PG | 주문/결제 단계 | 비용·보안 없이 승인/실패/타임아웃 시뮬레이션 |
-| 테스트 | JUnit 5, Spring Boot Test, Testcontainers | 초기~ | DB 통합 테스트, 동시성·멱등성 검증 |
-| 부하 테스트 | k6 | 안정성 검증 단계 | 처리량, 지연, 오류율 검증 |
-| 개발 환경 | Docker Compose | 초기 | PostgreSQL 등 로컬 인프라 실행 |
-| 관측성 | Spring Actuator, Micrometer | 안정성 검증 단계 | 요청/LLM 응답 시간, 호출 결과, 비용 관찰 |
-| Frontend | React + TypeScript (선택) | MVP 후반 | 대화와 장바구니 결과 확인용 최소 UI |
-| 확장 학습 | MCP Server | 선택적 확장 | 상품·주문 조회 기능을 외부 에이전트에 도구로 제공 |
+| 언어 | Java 21 | 동일 | 동일 |
+| Backend | Spring Boot 4.1.2, Spring MVC | 동일 | 동일 |
+| Build | Gradle 9.8.2 Wrapper, Groovy DSL | 동일 | 동일 |
+| ORM | Spring Data JPA / Hibernate | H2 adapter | PostgreSQL adapter |
+| 관계형 DB | H2 file database / PostgreSQL 18.6 | H2 | PostgreSQL |
+| Migration | Flyway | 공통 migration | 공통 + PostgreSQL 전용 migration |
+| AI framework | Spring AI 2.0.2 | Stub 또는 선택적 외부 LLM | Stub ChatModel |
+| Tool orchestration | Spring AI ChatClient / Tool Calling | 결정적 Stub 테스트와 AI 데모 | DB와 분리된 Tool 테스트 |
+| 벡터 검색 | SimpleVectorStore / PgVectorStore | SimpleVectorStore | pgvector |
+| 결제 | 자체 Mock PG | 동일 | 동일 |
+| 테스트 | JUnit 5, Spring Boot Test | H2 통합 테스트 | PostgreSQL 통합·동시성 테스트 |
+| CI | GitHub Actions | push만 수행 | Linux runner + PostgreSQL service |
+| 인프라 | H2 / PostgreSQL service | Docker 불필요 | GitHub Actions service container |
+| 관측성 | Spring Actuator, Micrometer | 후반 도입 | Tool·LLM·결제 지표 검증 |
+| 캐시 | Redis | 사용하지 않음 | 명확한 요구가 생길 때만 도입 |
+| Frontend | React + TypeScript | MVP 후반 선택 | 동일 |
 
-### 버전 정책 (2026-11-12 검증)
-- **Spring AI 2.0.x**는 **Spring Boot 4.0.x/4.1.x**를 지원한다. 초기화 버전은 최신 안정 패치인 **Spring Boot 4.1.2**이며, Tool Calling 단계에서 **Spring AI 2.0.2**를 추가한다.
-- Spring AI 2.1 계열은 아직 정식 안정 버전이 아니므로 이번 프로젝트 기본 선택에서 제외한다.
-- 로컬 PostgreSQL은 현재 지원되는 최신 안정 패치인 **18.6**을 사용한다. RAG 단계에서 동일 PostgreSQL 계열을 지원하는 pgvector 이미지를 검증해 전환한다.
-- `build.gradle`의 Spring AI BOM과 스타터 아티팩트 이름은 선택한 버전의 공식 문서를 기준으로 적용한다.
-- LLM 모델 이름은 환경설정으로 분리하고, 지원 여부와 사용요금을 호출 전에 확인한다.
+## 3. 구현 상태와 예정 의존성
 
-## 3. 아키텍처
+### 현재 구성됨
+
+- Java 21 toolchain
+- Spring Boot 4.1.2
+- Spring MVC
+- Spring Data JPA
+- H2 runtime과 `local-lite` 기본 프로필
+- PostgreSQL JDBC driver
+- JUnit 5 / Spring Boot Test
+- Gradle Wrapper 9.8.2
+
+### 다음 단계에서 추가
+
+- Flyway core와 PostgreSQL 지원 모듈
+- `application-local-ai.yml`, `application-ci-postgres.yml`
+- Spring AI 2.0.2 BOM과 모델 starter
+- Stub ChatModel adapter
+- GitHub Actions PostgreSQL workflow
+
+### RAG 단계에서 추가
+
+- Spring AI SimpleVectorStore
+- embedding model adapter
+- PostgreSQL pgvector extension과 PgVectorStore
+
+`build.gradle`의 정확한 starter 이름과 전이 의존성은 구현 시 Spring Boot와 Spring AI 공식 문서로 다시 확인한다. 사용하지 않는 라이브러리를 미리 추가하지 않는다.
+
+## 4. 실행 프로필 명세
+
+### `local-lite`
+
+- 목적: 기본 로컬 개발
+- DB: H2 file mode
+- LLM: 자체 Stub ChatModel
+- VectorStore: 비활성
+- 외부 API 키: 불필요
+- Docker: 불필요
+
+권장 JDBC URL:
 
 ```text
-Client (향후 React)
-   │
-   ▼
-Spring MVC REST API  ─────────── 인증·인가 / 사용자 승인
-   │
-   ├── catalog ───── 상품 및 가격 데이터 ─────┐
-   ├── inventory ─── 재고·예약 ──────────────┤
-   ├── cart ──────── 장바구니 ──────────────┤── PostgreSQL
-   ├── order ─────── 견적·주문 상태 ────────┤
-   ├── payment ───── Mock PG·멱등성 ───────┘
-   └── agent ─────── Spring AI ChatClient
-           │          │
-           │          ├── LLM API
-           │          └── 명시적 Tool Calling → 검증된 application services
-           └── (RAG 단계) PgVectorStore → PostgreSQL/pgvector
-
-Redis: 명확한 캐시/TTL 요구사항이 생길 때 도입
+jdbc:h2:file:./.data/cartpilot;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE
 ```
 
-**형태**: MSA가 아니라 도메인별 패키지를 가진 **Modular Monolith**. 복잡한 멀티모듈 Gradle 설정은 필요한 경우에만 도입.
+H2 PostgreSQL mode는 개발 편의 기능일 뿐 PostgreSQL 호환성을 보장하지 않는다.
 
-## 4. 도메인 분리
+### `local-ai`
 
-- `catalog`: 상품 목록·상세·가격·설명·판매상태
-- `inventory`: 재고 조회·예약·해제·동시성 제어
-- `cart`: 사용자별 항목 및 수량 관리
-- `order`: 서버 견적, 사용자 확인, 주문 상태 전이
-- `payment`: Mock PG, 멱등키, 승인/취소/타임아웃, 결과 대사
-- `agent`: LLM 프롬프트, 도구 인터페이스, 호출·응답 검증
-- `common`: 최소한의 공통 관심사
+- 목적: 실제 자연어 Tool 선택과 작은 RAG 데모
+- DB: H2 file mode
+- LLM: 환경변수로 선택한 외부 API
+- VectorStore: SimpleVectorStore
+- 비밀값: 로컬 환경변수로만 제공
 
-## 5. AI 기능의 단계별 확장
+### `ci-postgres`
 
-### 1단계 — Tool Calling (필수)
-- `searchProducts(keyword, filters)`
+- 목적: 실제 DB 동작 검증
+- DB: GitHub Actions PostgreSQL service
+- LLM: Stub ChatModel
+- VectorStore: 기본 비활성, RAG job에서만 pgvector
+- 데이터: 합성 테스트 데이터만 사용
+
+## 5. 데이터베이스 규칙
+
+- JPA 엔티티와 application service는 실행 프로필에 의존하지 않는다.
+- money는 `BigDecimal`과 명시적인 currency로 표현한다.
+- Flyway를 schema 변경의 단일 기준으로 사용한다.
+- 공통 migration은 H2와 PostgreSQL에서 실행 가능한 단순 SQL을 우선한다.
+- PostgreSQL 전용 인덱스, 잠금 보조 구조, pgvector migration은 분리한다.
+- H2에서 통과한 쿼리도 PostgreSQL CI에서 반드시 다시 실행한다.
+- 재고 동시성, 유니크 제약, 멱등성은 PostgreSQL 테스트 결과만 완료 근거로 인정한다.
+
+## 6. AI와 Tool Calling 규칙
+
+Spring AI의 `ChatClient`를 기본 오케스트레이션 API로 사용한다. LLM은 Tool 이름과 인자를 선택하며, Tool 실행과 반복 호출은 서버가 관리한다.
+
+초기 Tool:
+
+- `searchProducts(query, filters)`
 - `getProductDetails(productId)`
-- `checkStock(productId)`
+- `checkStock(productId, quantity)`
 - `addCartItem(productId, quantity)`
 - `getCart()`
 - `getOrderQuote()`
+- `getMyOrderStatus(orderId)`
 
-사용자 식별은 서버 인증 컨텍스트를 사용한다. LLM에게 사용자 ID나 가격을 결정하도록 맡기지 않는다. AI에는 **직접 결제 승인 도구를 제공하지 않는다**.
+보안 규칙:
 
-### 2단계 — RAG (권장)
-- 상품 상세 설명·사용 가이드·배송/교환 정책 문서 임베딩
-- pgvector 유사도 검색과 키워드 검색의 차이 실험
-- 문서 출처와 상품 ID 매핑 및 결과 검증
-- **현재 가격·재고는 벡터 검색 결과가 아닌 도메인 API 재조회**
+- 사용자 ID와 tenant 정보는 모델 인자가 아닌 server-side Tool Context에서 전달한다.
+- Tool 입력 DTO에 필수값, 길이, 수량, 허용 필터를 명시한다.
+- LLM이 전달한 가격, 재고, 사용자 ID를 신뢰하지 않는다.
+- Tool은 repository를 직접 호출하지 않는다.
+- 주문 확정과 결제 승인은 인증된 별도 REST endpoint로만 수행한다.
+- Tool 인자·결과 전체를 기본 로그로 남기지 않는다.
 
-### 3단계 — MCP / 평가 (선택)
-- 읽기 전용 상품 검색 Tool을 MCP 서버로 공개
-- 고정 질문 세트로 제품 추천의 관련성, 도구 정확도, 환각률 측정
-- API 지연, 모델 토큰, 호출 비용 기록
+## 7. RAG 기술 명세
 
-## 6. 결제/주문 안정성 검증 목표
+RAG는 상품 설명, 사용 가이드, 배송·교환 정책처럼 비정형 문서를 검색하기 위한 후반 기능이다.
 
-1. 주문 초안의 가격을 서버에서 재계산한다.
-2. 재고 10개 / 동시 주문 100개 환경에서 초과 판매가 없어야 한다.
-3. 동일 결제 멱등키의 재요청으로 중복 승인이 발생하지 않아야 한다.
-4. PG 승인 후 응답 타임아웃을 `UNKNOWN` 등 재조회 가능한 상태로 관리한다.
-5. 중복 콜백·실패·취소에서 주문/재고 상태가 일관되어야 한다.
-6. 다른 사용자의 장바구니·주문을 Agent Tool이 조회할 수 없어야 한다.
+### 로컬 학습
 
-## 7. 개발 순서
+`SimpleVectorStore`를 사용한다. 메모리 기반 유사도 검색과 JSON 저장을 이용할 수 있지만 영속성 검증의 기준으로 사용하지 않는다.
 
-| 단계 | 구현 범위 | 완료 기준 |
+### PostgreSQL 검증
+
+pgvector와 Spring AI PgVectorStore를 사용한다. 문서 chunk에는 다음 metadata를 포함한다.
+
+- `documentId`
+- `productId` 또는 `policyType`
+- `source`
+- `version`
+- `updatedAt`
+
+RAG 검색 결과는 설명 근거로만 사용한다. 가격, 가용 재고, 주문 상태는 Tool을 통해 live domain API에서 다시 조회한다.
+
+## 8. 테스트 전략
+
+| 테스트 | 환경 | 검증 대상 |
 |---|---|---|
-| 0. Init | Gradle, Spring Boot, Postgres, smoke test, 문서 | 로컬 빌드·테스트 성공 |
-| 1. Commerce | 상품 조회, 재고 조회, 장바구니 | API + DB 테스트 성공 |
-| 2. AI Tool Calling | 자연어 상품 검색, 장바구니 도구 호출 | AI 응답이 실제 상품 ID와 연결됨 |
-| 3. Order/Payment | 견적, 명시적 주문 확인, Mock PG | 중복 결제/타임아웃 테스트 |
-| 4. RAG | pgvector, 검색 평가 | 응답 근거·정확도 비교 |
-| 5. Hardening | 동시성·인증·모니터링·부하 테스트 | 재현 가능한 테스트 결과 |
-| 6. Optional | React UI, MCP, 배포 | 최소 데모 완성 |
+| 단위 테스트 | JVM | 도메인 규칙, 금액, 상태 전이 |
+| MVC slice | JVM | 요청·응답, 입력 검증 |
+| H2 통합 테스트 | `local-lite` | JPA mapping, 기본 repository, Tool 흐름 |
+| Stub AI 테스트 | `local-lite` | Tool dispatch, Tool Context, 오류 처리 |
+| PostgreSQL 통합 테스트 | GitHub Actions | 실제 migration, 제약조건, SQL |
+| 동시성 테스트 | PostgreSQL | 재고 음수 방지, 결제 멱등성 |
+| 실제 LLM smoke test | 허용된 환경 | 자연어 Tool 선택과 구조화 인자 |
+| RAG 평가 | 두 VectorStore | 검색 관련성, 출처, 환각 여부 |
 
-## 8. 초기화 시 주의점
+실제 LLM 테스트는 비용과 비결정성 때문에 기본 `test` task에서 분리한다.
 
-- **최초 init에 AI API Key를 요구하지 않는다.** 기본 빌드가 인증정보 없이 통과해야 한다.
-- PostgreSQL은 초기부터 쓰되, pgvector/Redis는 관련 기능 구현 시 추가해도 충분하다.
-- 최초에는 실행 가능한 단일 애플리케이션과 smoke test만 만든다. 빈 도메인 클래스 수십 개를 생성하지 않는다.
-- `.env`와 API Key는 절대 커밋하지 않는다. `.env.example`만 포함한다.
-- IntelliJ 또는 Codex가 로컬에서 `./gradlew test`를 실행해 검증한다.
+## 9. 도입 순서
 
-## 9. 공식 참고자료
+1. H2 `local-lite` 프로필과 Flyway
+2. 상품 검색·재고 조회·장바구니 수직 슬라이스
+3. Stub ChatModel 기반 Tool Calling
+4. 허용된 환경에서 실제 LLM adapter
+5. GitHub Actions PostgreSQL 통합 테스트
+6. 주문·Mock 결제와 PostgreSQL 동시성 검증
+7. SimpleVectorStore 기반 RAG 데모
+8. pgvector 기반 검색 검증
+9. 인증·관측성·부하 테스트
 
+## 10. 버전 정책
+
+- 2026-11-17 기준 프로젝트 고정 버전은 Spring Boot 4.1.2, Spring AI 2.0.2다.
+- Spring AI 2.0.x는 Spring Boot 4.0.x와 4.1.x를 지원하는 조합을 사용한다.
+- H2와 주요 Spring dependency 버전은 Spring Boot dependency management를 우선한다.
+- PostgreSQL은 검증된 18.6 이미지를 CI와 선택적 Compose 환경에서 사용한다.
+- milestone, release candidate, snapshot 버전은 기본 의존성으로 사용하지 않는다.
+- 모델 이름은 코드에 고정하지 않고 환경설정으로 분리한다.
+
+## 11. 공식 참고자료
+
+- Spring Boot SQL Databases: https://docs.spring.io/spring-boot/reference/data/sql.html
+- Spring Boot Database Initialization: https://docs.spring.io/spring-boot/how-to/data-initialization.html
 - Spring AI Getting Started: https://docs.spring.io/spring-ai/reference/getting-started.html
-- Spring AI 프로젝트: https://spring.io/projects/spring-ai/
-- Tool Calling: https://docs.spring.io/spring-ai/reference/api/tools.html
-- PGvector: https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html
-- Spring Initializr: https://start.spring.io/
+- Spring AI Tool Calling: https://docs.spring.io/spring-ai/reference/api/tools.html
+- Spring AI Vector Databases: https://docs.spring.io/spring-ai/reference/api/vectordbs.html
+- Spring AI PgVector: https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html
+- GitHub Actions PostgreSQL Service: https://docs.github.com/actions/tutorials/use-containerized-services/create-postgresql-service-containers

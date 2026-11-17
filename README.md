@@ -1,6 +1,6 @@
 # CartPilot
 
-CartPilot은 자연어 상품 탐색부터 추천, 장바구니, 주문 준비까지 연결하는 AI 커머스 학습 프로젝트입니다. 외부 LLM은 사용자의 의도를 해석하고 제한된 Tool을 선택하며, 가격·재고·소유권·주문·결제의 최종 판단은 서버가 담당합니다.
+CartPilot은 자연어 상품 탐색부터 추천, 장바구니, 주문 준비까지 연결하는 AI 커머스 프로젝트입니다. 외부 LLM은 사용자의 의도를 해석하고 제한된 Tool을 선택하며, 가격·재고·소유권·주문·결제의 최종 판단은 서버가 담당합니다.
 
 ## 핵심 구조
 
@@ -22,15 +22,16 @@ LLM에는 주문 확정이나 결제 승인 Tool을 제공하지 않습니다. �
 | `local-ai` | H2 + 외부 LLM + SimpleVectorStore | AI/RAG 데모 |
 | `ci-postgres` | PostgreSQL + Stub ChatModel + 선택적 pgvector | GitHub Actions DB·벡터 검색 검증 |
 
-H2 프로필과 AI adapter는 다음 구현 단계입니다. 현재 코드에는 아직 추가되지 않았으므로 현 시점의 `bootRun`은 PostgreSQL 연결이 필요합니다. 기본 Gradle 테스트는 DB 서버 없이 실행됩니다.
+`local-lite`는 기본 프로필이며 H2 파일 DB를 사용합니다. AI adapter는 아직 추가되지 않았으므로 현재 실행에는 LLM API 키가 필요하지 않습니다.
 
 ## 현재 상태
 
 - Java 21, Spring Boot 4.1.2, Gradle 9.8.2 기반 백엔드 초기화
 - `/api/health` smoke endpoint와 MVC 테스트
-- Docker 없는 `local-lite` 목표 아키텍처 문서화
+- H2 파일 DB 기반 `local-lite` 기본 프로필
 - PostgreSQL Compose는 선택적 실행 도구로 유지
-- Spring AI 2.0.2, H2, Flyway는 다음 단계에서 추가 예정
+- Flyway는 첫 Commerce 스키마와 함께 다음 단계에서 추가 예정
+- Spring AI 2.0.2와 Stub ChatModel은 Tool Calling 단계에서 추가 예정
 - SimpleVectorStore와 pgvector는 RAG 단계에서 도입 예정
 
 ## 요구 사항
@@ -41,6 +42,21 @@ H2 프로필과 AI adapter는 다음 구현 단계입니다. 현재 코드에는
 
 Windows에서 기본 `JAVA_HOME`이 다른 버전을 가리킨다면 JDK 21로 변경해야 합니다.
 
+## 로컬 실행
+
+별도 DB 서버 없이 기본 `local-lite` 프로필로 실행합니다.
+
+```powershell
+Set-Location backend
+.\gradlew.bat bootRun
+```
+
+헬스 확인:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/health
+```
+
 ## 테스트
 
 ```powershell
@@ -50,7 +66,7 @@ Set-Location backend
 
 ## 선택적 PostgreSQL 실행
 
-Docker를 사용할 수 있는 환경에서는 다음 Compose 파일로 PostgreSQL을 실행할 수 있습니다.
+Docker 사용시 다음 Compose 파일로 PostgreSQL을 실행할 수 있습니다.
 
 ```powershell
 Copy-Item .env.example .env

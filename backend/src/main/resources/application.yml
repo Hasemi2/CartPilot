@@ -1,12 +1,9 @@
 spring:
   application:
     name: cartpilot
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/cartpilot}
-    username: ${DB_USERNAME:cartpilot}
-    password: ${DB_PASSWORD:cartpilot}
+  profiles:
+    default: local-lite
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-

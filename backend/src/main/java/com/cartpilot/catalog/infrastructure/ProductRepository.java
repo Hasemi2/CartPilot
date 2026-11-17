@@ -2,6 +2,7 @@ package com.cartpilot.catalog.infrastructure;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.cartpilot.catalog.domain.Product;
@@ -12,6 +13,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
+
+	Optional<Product> findByIdAndPublishedTrue(UUID id);
 
 	@Query("""
 			select p

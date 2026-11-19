@@ -28,6 +28,7 @@ public class DeterministicStubChatModel implements ChatModel {
 	private static final String STOCK_PREFIX = "재고 확인:";
 	private static final String SET_CART_PREFIX = "장바구니 수량 설정:";
 	private static final String GET_CART_COMMAND = "장바구니 조회";
+	private static final String GET_ORDER_QUOTE_COMMAND = "주문 견적";
 
 	@Override
 	public ChatResponse call(Prompt prompt) {
@@ -50,6 +51,9 @@ public class DeterministicStubChatModel implements ChatModel {
 	private Optional<ToolRequest> selectTool(String userText) {
 		if (userText.equals(GET_CART_COMMAND)) {
 			return Optional.of(new ToolRequest("getCart", Map.of()));
+		}
+		if (userText.equals(GET_ORDER_QUOTE_COMMAND)) {
+			return Optional.of(new ToolRequest("getOrderQuote", Map.of()));
 		}
 		if (userText.startsWith(SEARCH_PREFIX)) {
 			return Optional.of(new ToolRequest("searchProducts", Map.of(
@@ -125,7 +129,7 @@ public class DeterministicStubChatModel implements ChatModel {
 
 	private String supportedCommands() {
 		return "상품 검색: 검색어 | 상품 상세: 상품ID | 재고 확인: 상품ID, 수량 | "
-				+ "장바구니 수량 설정: 상품ID, 수량 | 장바구니 조회";
+				+ "장바구니 수량 설정: 상품ID, 수량 | 장바구니 조회 | 주문 견적";
 	}
 
 	private record ToolRequest(String name, Map<String, Object> arguments) {

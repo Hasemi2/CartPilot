@@ -29,7 +29,7 @@ public class AgentChatController {
 		summary = "커머스 에이전트 대화",
 		description = "local-lite에서는 '상품 검색: 검색어', '상품 상세: 상품ID', "
 				+ "'재고 확인: 상품ID, 수량', '장바구니 수량 설정: 상품ID, 수량', "
-				+ "'장바구니 조회' 형식을 지원합니다. local-ai에서는 Gemini가 자연어에서 Tool을 선택합니다.")
+				+ "'장바구니 조회', '주문 견적' 형식을 지원합니다. local-ai에서는 Gemini가 자연어에서 Tool을 선택합니다.")
 	@ApiResponses({
 		@ApiResponse(
 				responseCode = "200",

@@ -42,7 +42,7 @@ class CommerceToolsIntegrationTest {
 	}
 
 	@Test
-	void exposesOnlyTheFiveCommerceTools() {
+	void exposesOnlyTheSixCommerceTools() {
 		assertThat(toolCallbacks)
 				.extracting(callback -> callback.getToolDefinition().name())
 				.containsExactlyInAnyOrder(
@@ -50,7 +50,8 @@ class CommerceToolsIntegrationTest {
 						"getProductDetails",
 						"checkStock",
 						"setCartItemQuantity",
-						"getCart");
+						"getCart",
+						"getOrderQuote");
 	}
 
 	@Test
@@ -89,6 +90,13 @@ class CommerceToolsIntegrationTest {
 		assertThat(currentCart)
 				.contains(KEYBOARD_ID)
 				.contains("\"totalQuantity\":2");
+
+		String orderQuote = tool("getOrderQuote").call("{}");
+		assertThat(orderQuote)
+				.contains(KEYBOARD_ID)
+				.contains("\"totalAmount\":158000.00")
+				.contains("\"currency\":\"KRW\"")
+				.contains("\"orderable\":true");
 	}
 
 	private ToolCallback tool(String name) {

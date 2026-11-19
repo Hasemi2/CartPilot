@@ -12,6 +12,8 @@ import com.cartpilot.catalog.application.ProductSearchResult;
 import com.cartpilot.catalog.application.ProductSearchService;
 import com.cartpilot.inventory.application.InventoryAvailabilityResult;
 import com.cartpilot.inventory.application.InventoryAvailabilityService;
+import com.cartpilot.order.application.OrderQuoteResult;
+import com.cartpilot.order.application.OrderQuoteService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +29,7 @@ public class CommerceTools {
 	private final ProductDetailService productDetailService;
 	private final InventoryAvailabilityService inventoryAvailabilityService;
 	private final CartService cartService;
+	private final OrderQuoteService orderQuoteService;
 
 	@Tool(name = "searchProducts", description = "판매 중인 상품을 이름과 설명으로 검색한다. 최대 가격은 선택 사항이다.")
 	public List<ProductSearchResult> searchProducts(
@@ -58,5 +61,10 @@ public class CommerceTools {
 	@Tool(name = "getCart", description = "현재 사용자의 장바구니 상품과 수량 및 현재 가격을 조회한다.")
 	public CartResult getCart() {
 		return cartService.getMyCart();
+	}
+
+	@Tool(name = "getOrderQuote", description = "현재 사용자의 장바구니를 현재 가격과 재고로 다시 검증해 주문 견적을 계산한다. 주문 생성이나 재고 예약은 수행하지 않는다.")
+	public OrderQuoteResult getOrderQuote() {
+		return orderQuoteService.createForCurrentUser();
 	}
 }

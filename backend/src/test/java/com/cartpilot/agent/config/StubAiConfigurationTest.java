@@ -99,5 +99,15 @@ class StubAiConfigurationTest {
 		assertThat(currentCart)
 				.contains(KEYBOARD_ID)
 				.contains("\"quantity\":2");
+
+		String orderQuote = chatClient.prompt()
+				.user("주문 견적")
+				.call()
+				.content();
+
+		assertThat(orderQuote)
+				.contains(KEYBOARD_ID)
+				.contains("\"totalAmount\":158000.00")
+				.contains("\"orderable\":true");
 	}
 }

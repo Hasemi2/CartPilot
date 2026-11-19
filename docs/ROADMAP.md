@@ -44,6 +44,7 @@ Docker Compose는 선택적 PostgreSQL 실행 도구로만 유지한다.
 - [x] Stub ChatModel 기반 결정적 Tool dispatch 테스트
 - [x] `searchProducts`, `getProductDetails`, `checkStock` Tool
 - [x] `setCartItemQuantity`, `getCart` Tool
+- [x] `getOrderQuote` Tool
 - [x] Swagger에서 실행 가능한 `POST /api/agent/chat` Stub 대화 API
 - [x] Gemini 3.5 Flash Lite 기반 `local-ai` 프로필과 Google GenAI adapter
 - [x] Stub·Gemini가 공유하는 ChatClient와 Commerce Tool 구성
@@ -57,7 +58,8 @@ Docker Compose는 선택적 PostgreSQL 실행 도구로만 유지한다.
 
 ## 3. 주문과 Mock 결제
 
-- [ ] 서버 계산 견적과 만료 정책
+- [x] 현재 가격·재고를 다시 검증하는 비영속 서버 견적
+- [ ] 주문 확인용 견적 저장과 만료 정책
 - [ ] 별도 인증 endpoint를 통한 명시적 주문 확인
 - [ ] 재고 예약·해제
 - [ ] Mock PG와 결제 멱등키

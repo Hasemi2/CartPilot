@@ -106,6 +106,14 @@ Invoke-RestMethod -Method Delete `
 
 `PUT`은 같은 상품의 수량을 교체하므로 같은 요청을 반복해도 항목이나 수량이 중복 증가하지 않습니다. 장바구니에는 현재 가격이 표시되지만 주문 가격을 확정하지 않으며 재고를 예약하지도 않습니다. 현재 사용자 식별은 서버에 정의된 고정 학습용 컨텍스트를 사용하고, 인증 단계에서 실제 사용자 컨텍스트로 교체합니다.
 
+주문 견적 계산:
+
+```powershell
+Invoke-RestMethod -Method Post 'http://localhost:8080/api/order-quotes'
+```
+
+주문 견적은 장바구니 상품의 현재 가격과 재고를 다시 확인해 총액과 주문 가능 여부를 계산합니다. 견적을 저장하거나 주문을 생성하지 않으며 재고도 예약하지 않습니다.
+
 ## Stub AI 대화 API
 
 `local-lite`에서는 API 키 없이 Spring AI ChatClient와 Commerce Tool 호출 흐름을 확인할 수 있습니다.
@@ -123,6 +131,7 @@ Invoke-RestMethod -Method Post -ContentType 'application/json' -Body $body `
 - `재고 확인: 상품ID, 수량`
 - `장바구니 수량 설정: 상품ID, 수량`
 - `장바구니 조회`
+- `주문 견적`
 
 Stub ChatModel은 자연어를 추론하지 않고 위 명령을 결정적인 Tool 호출로 변환합니다. 실제 자연어 해석은 `local-ai`에서 검증합니다.
 

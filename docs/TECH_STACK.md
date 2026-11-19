@@ -16,11 +16,12 @@ CartPilot은 자연어 요청을 외부 LLM이 구조화된 Tool 호출로 변�
 | ORM | Spring Data JPA / Hibernate | H2 adapter | PostgreSQL adapter |
 | 관계형 DB | H2 file database / PostgreSQL 18.6 | H2 | PostgreSQL |
 | Migration | Flyway | 공통 migration | 공통 + PostgreSQL 전용 migration |
-| AI framework | Spring AI 2.0.2 | Stub 또는 선택적 외부 LLM | Stub ChatModel |
+| AI framework | Spring AI 2.0.2 | Stub 또는 Gemini 3.5 Flash Lite | Stub ChatModel |
 | Tool orchestration | Spring AI ChatClient / Tool Calling | 결정적 Stub 테스트와 AI 데모 | DB와 분리된 Tool 테스트 |
 | 벡터 검색 | SimpleVectorStore / PgVectorStore | SimpleVectorStore | pgvector |
 | 결제 | 자체 Mock PG | 동일 | 동일 |
 | 테스트 | JUnit 5, Spring Boot Test | H2 통합 테스트 | PostgreSQL 통합·동시성 테스트 |
+| API 명세 | springdoc-openapi 3.2.0, Swagger UI | 자동 생성 명세와 실행 UI | 동일 |
 | CI | GitHub Actions | push만 수행 | Linux runner + PostgreSQL service |
 | 인프라 | H2 / PostgreSQL service | Docker 불필요 | GitHub Actions service container |
 | 관측성 | Spring Actuator, Micrometer | 후반 도입 | Tool·LLM·결제 지표 검증 |
@@ -35,17 +36,26 @@ CartPilot은 자연어 요청을 외부 LLM이 구조화된 Tool 호출로 변�
 - Spring Boot 4.1.2
 - Spring MVC
 - Spring Data JPA
+- Flyway와 공통 상품 migration
+- 상품별 현재고를 관리하는 `inventory_stocks` schema
+- 사용자별 `carts`, `cart_items` schema와 멱등 수량 설정 API
 - H2 runtime과 `local-lite` 기본 프로필
 - PostgreSQL JDBC driver
+- Bean Validation
+- springdoc-openapi 3.2.0 / Swagger UI
+- Lombok (JPA 엔티티 boilerplate 최소화 용도)
+- Spring AI 2.0.2 BOM, ChatClient와 Tool Calling 기반 모듈
+- 기존 application service를 호출하는 Commerce Tool 5개
+- `local-lite` 전용 결정적 Stub ChatModel
+- `local-ai` 전용 Google GenAI adapter와 Gemini 3.5 Flash Lite
+- 두 ChatModel이 공유하는 ChatClient와 Commerce Tool 구성
 - JUnit 5 / Spring Boot Test
 - Gradle Wrapper 9.8.2
 
 ### 다음 단계에서 추가
 
-- Flyway core와 PostgreSQL 지원 모듈
-- `application-local-ai.yml`, `application-ci-postgres.yml`
-- Spring AI 2.0.2 BOM과 모델 starter
-- Stub ChatModel adapter
+- Flyway PostgreSQL 지원 모듈
+- `application-ci-postgres.yml`
 - GitHub Actions PostgreSQL workflow
 
 ### RAG 단계에서 추가
@@ -62,6 +72,7 @@ CartPilot은 자연어 요청을 외부 LLM이 구조화된 Tool 호출로 변�
 
 - 목적: 기본 로컬 개발
 - DB: H2 file mode
+- Migration: 공통 schema와 `local-lite` 합성 데이터
 - LLM: 자체 Stub ChatModel
 - VectorStore: 비활성
 - 외부 API 키: 불필요
@@ -77,11 +88,14 @@ H2 PostgreSQL mode는 개발 편의 기능일 뿐 PostgreSQL 호환성을 보장
 
 ### `local-ai`
 
-- 목적: 실제 자연어 Tool 선택과 작은 RAG 데모
+- 목적: 실제 자연어 Tool 선택 데모
 - DB: H2 file mode
-- LLM: 환경변수로 선택한 외부 API
-- VectorStore: SimpleVectorStore
-- 비밀값: 로컬 환경변수로만 제공
+- Migration: 공통 schema와 `local-lite` 합성 데이터
+- LLM: Google GenAI adapter / Gemini 3.5 Flash Lite
+- VectorStore: 비활성, RAG 단계에서 SimpleVectorStore 추가
+- 비밀값: `GOOGLE_API_KEY` 환경변수로만 제공
+- 호출 제한: Google SDK 요청당 15초, Spring AI 최대 2회
+- 장애 응답: 모델 과부하·시간 초과 시 `503 AI_MODEL_UNAVAILABLE`
 
 ### `ci-postgres`
 

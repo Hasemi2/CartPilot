@@ -34,7 +34,7 @@ Spring MVC REST API ---------------- 인증·인가 / 명시적 주문 확인
         |
         +-- ChatModel port
         |     +-- StubChatModel ------- 로컬 기본값/API 키 불필요
-        |     +-- External LLM adapter  허용된 환경에서만 사용
+        |     +-- Gemini Flash -------- local-ai 자연어·Tool 선택
         |
         +-- Tool adapters ------------ application service만 호출
         |
@@ -52,10 +52,10 @@ Persistence
 | 프로필 | 관계형 DB | ChatModel | VectorStore | 목적 |
 |---|---|---|---|---|
 | `local-lite` | H2 file | Stub | 사용 안 함 | 기본 개발·테스트 |
-| `local-ai` | H2 file | 외부 LLM API | SimpleVectorStore | Tool Calling과 RAG 데모 |
+| `local-ai` | H2 file | Gemini 3.5 Flash Lite | 사용 안 함 | 실제 LLM Tool Calling 데모 |
 | `ci-postgres` | PostgreSQL | Stub | 필요 시 PgVectorStore | DB 정합성과 벡터 검색 검증 |
 
-`local-lite`는 Docker, PostgreSQL 설치, LLM API 키 없이 실행되어야 한다. `local-ai`는 명시적으로 프로필을 선택하고 환경변수를 제공할 때만 외부 API를 호출한다.
+`local-lite`는 Docker, PostgreSQL 설치, LLM API 키 없이 실행되어야 한다. `local-ai`는 명시적으로 프로필을 선택하고 `GOOGLE_API_KEY` 환경변수를 제공할 때만 Gemini API를 호출한다. 두 프로필은 같은 `ChatClient`와 Commerce Tool을 사용하고 `ChatModel`만 교체한다.
 
 ## 5. 도메인과 의존 방향
 
@@ -128,6 +128,8 @@ GitHub Actions의 Linux runner에서 PostgreSQL service container를 실행해 �
   -> LLM이 실제 결과를 자연어로 설명
 ```
 
+`local-ai`의 외부 호출은 요청당 15초, Spring AI 최대 2회로 제한한다. 모델 과부하 또는 시간 초과가 계속되면 Tool 실행을 이어가지 않고 `503 AI_MODEL_UNAVAILABLE`로 종료한다.
+
 모든 Tool에 다음 규칙을 적용한다.
 
 1. 사용자 ID와 권한은 Tool 인자가 아니라 인증 컨텍스트에서 얻는다.
@@ -137,7 +139,7 @@ GitHub Actions의 Linux runner에서 PostgreSQL service container를 실행해 �
 5. 상품 설명과 RAG 문서에 포함된 명령문을 실행 지시로 취급하지 않는다.
 6. `confirmOrder`, `approvePayment` Tool은 등록하지 않는다.
 
-로컬 기본 테스트에서는 Stub ChatModel이 정해진 Tool 요청을 반환하도록 해 Tool dispatch와 검증 로직을 재현한다. 실제 LLM 연동 테스트는 별도 태그 또는 프로필로 분리한다.
+로컬 기본 테스트에서는 Stub ChatModel이 정해진 Tool 요청을 반환하도록 해 Tool dispatch와 검증 로직을 재현한다. `local-ai`에서는 Gemini 3.5 Flash Lite가 같은 Tool 정의를 보고 자연어 요청에 맞는 Tool 이름과 인자를 선택한다. 실제 API를 호출하는 테스트는 기본 테스트에서 분리한다.
 
 ## 8. RAG 구조
 

@@ -26,16 +26,20 @@ public class AgentChatController {
 
 	@PostMapping
 	@Operation(
-		summary = "에이전트 대화",
+		summary = "커머스 에이전트 대화",
 		description = "local-lite에서는 '상품 검색: 검색어', '상품 상세: 상품ID', "
 				+ "'재고 확인: 상품ID, 수량', '장바구니 수량 설정: 상품ID, 수량', "
-				+ "'장바구니 조회' 형식을 지원합니다.")
+				+ "'장바구니 조회' 형식을 지원합니다. local-ai에서는 Gemini가 자연어에서 Tool을 선택합니다.")
 	@ApiResponses({
 		@ApiResponse(
 				responseCode = "200",
 				description = "대화 및 Tool 실행 성공",
 				content = @Content(schema = @Schema(implementation = AgentChatResponse.class))),
-		@ApiResponse(responseCode = "400", description = "메시지가 비어 있거나 허용 길이를 초과함", content = @Content)
+		@ApiResponse(responseCode = "400", description = "메시지가 비어 있거나 허용 길이를 초과함", content = @Content),
+		@ApiResponse(
+				responseCode = "503",
+				description = "AI 모델 과부하 또는 호출 시간 초과",
+				content = @Content(schema = @Schema(implementation = AgentErrorResponse.class)))
 	})
 	public AgentChatResponse chat(@Valid @RequestBody AgentChatRequest request) {
 		return new AgentChatResponse(agentChatService.chat(request.message()));

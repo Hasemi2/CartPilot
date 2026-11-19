@@ -9,8 +9,20 @@ spring:
   ai:
     model:
       chat: google-genai
+    retry:
+      max-attempts: 2
+      backoff:
+        initial-interval: 1s
+        multiplier: 2
+        max-interval: 2s
     google:
       genai:
         api-key: ${GOOGLE_API_KEY}
         chat:
-          model: gemini-3.5-flash
+          model: gemini-3.5-flash-lite
+
+cartpilot:
+  ai:
+    google:
+      timeout: 15s
+      retry-attempts: 1
